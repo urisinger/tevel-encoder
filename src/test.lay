@@ -1,0 +1,10 @@
+struct Foo{
+  x: i32,
+  z: f32,
+  y: Bar,
+} 
+
+struct Bar{
+  x: i16,
+  y: i8
+}
