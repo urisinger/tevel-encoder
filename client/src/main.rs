@@ -84,7 +84,7 @@ fn App(expr: StoredValue<Expr>) -> impl IntoView {
                 }>
                     <option value="">"Select a Layout"</option>
                     {expr
-                        .get_value()
+                        .read_value()
                         .layout_ids
                         .keys()
                         .map(|key| {
@@ -97,7 +97,7 @@ fn App(expr: StoredValue<Expr>) -> impl IntoView {
                     selected_layout
                         .get()
                         .map(|layout_name| {
-                            let layout_id = expr.get_value().get_id(&layout_name).unwrap();
+                            let layout_id = expr.read_value().get_id(&layout_name).unwrap();
 
                             view! {
                                 <form on:submit=on_submit>
@@ -140,17 +140,18 @@ fn StructBuilder(
     prefix: StoredValue<String>,
 ) -> impl IntoView {
     let views = move || {
-        expr.get_value()
+        expr.read_value()
             .get_type(struct_layout)
             .unwrap()
             .fields
             .iter()
             .map(|(name, ty)| {
-                let name = StoredValue::new(if !prefix.get_value().is_empty() {
-                    format!("{}.{name}", prefix.get_value())
+                let name = StoredValue::new(if !prefix.read_value().is_empty() {
+                    format!("{}.{name}", prefix.read_value())
                 } else {
                     name.clone()
                 });
+
                 match ty {
                     Type::Struct(inner_id) => view! {
                         <fieldset>
@@ -165,17 +166,34 @@ fn StructBuilder(
                         </fieldset>
                     }
                     .into_any(),
-                    _ => {
-                        let (value, set_value) = signal("".to_string());
 
-                        let mut data = form_data.write();
-                        data.insert(name.get_value(), value);
+                    Type::I8 | Type::I16 | Type::I32 | Type::I64 => {
+                        let (value, set_value) = signal("0".to_string());
+                        form_data.write().insert(name.get_value(), value);
 
                         view! {
                             <div>
                                 <label>{name.get_value()}</label>
                                 <input
-                                    type="text"
+                                    type="number"
+                                    step="1"
+                                    on:input=move |ev| set_value.set(event_target_value(&ev))
+                                />
+                            </div>
+                        }
+                        .into_any()
+                    }
+
+                    Type::F32 | Type::F64 => {
+                        let (value, set_value) = signal("0.0".to_string());
+                        form_data.write().insert(name.get_value(), value);
+
+                        view! {
+                            <div>
+                                <label>{name.get_value()}</label>
+                                <input
+                                    type="number"
+                                    step="any"
                                     on:input=move |ev| set_value.set(event_target_value(&ev))
                                 />
                             </div>
