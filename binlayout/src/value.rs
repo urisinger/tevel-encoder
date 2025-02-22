@@ -1,5 +1,7 @@
 use std::io;
-use std::{collections::HashMap, mem};
+use std::mem;
+
+use std::fmt;
 
 use crate::epxr::{Expr, LayoutId, Type};
 
@@ -11,6 +13,31 @@ pub enum Value {
     I64(i64),
     F32(f64),
     F64(f64),
+}
+
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Value::I8(v) => write!(f, "{}", v),
+            Value::I16(v) => write!(f, "{}", v),
+            Value::I32(v) => write!(f, "{}", v),
+            Value::I64(v) => write!(f, "{}", v),
+            Value::F32(v) => write!(f, "{:.6}", v), // Limits float precision for readability
+            Value::F64(v) => write!(f, "{:.6}", v),
+            Value::Struct { fields } => {
+                writeln!(f, "{{")?;
+                for (name, value) in fields {
+                    let indented_value = format!("{}", value)
+                        .lines()
+                        .map(|line| format!("  {}", line)) // Indent each line for nested structs
+                        .collect::<Vec<_>>()
+                        .join("\n");
+                    writeln!(f, "  {}: {}", name, indented_value)?;
+                }
+                write!(f, "}}")
+            }
+        }
+    }
 }
 
 impl Value {
@@ -79,18 +106,18 @@ impl Value {
     }
 
     /// Format the value into a Vec<u8> with minimal allocations.
-    pub fn format_value(&self) -> Vec<u8> {
+    pub fn encode_value(&self) -> Vec<u8> {
         let total_size = self.size();
         let mut buf = vec![0u8; total_size];
         self.write_into(&mut buf);
         buf
     }
 
-    pub fn prompt_for_values(expr: &Expr, id: LayoutId) -> Option<Value> {
-        Self::prompt_for_values_helper(expr, id, "")
+    pub fn prompt_for_value(expr: &Expr, id: LayoutId) -> Option<Value> {
+        Self::prompt_for_value_helper(expr, id, "")
     }
 
-    fn prompt_for_values_helper(expr: &Expr, id: LayoutId, prefix: &str) -> Option<Value> {
+    fn prompt_for_value_helper(expr: &Expr, id: LayoutId, prefix: &str) -> Option<Value> {
         let layout = expr.layouts.get(&id)?;
         let mut values = Vec::new();
         let mut input = String::new();
@@ -130,7 +157,7 @@ impl Value {
                         return None;
                     }
                 }
-                Type::Struct(inner_id) => Self::prompt_for_values_helper(
+                Type::Struct(inner_id) => Self::prompt_for_value_helper(
                     expr,
                     *inner_id,
                     &format!("{}.", full_field_name),
