@@ -1,5 +1,5 @@
 [workspace]
 members = [
-  "binlayout", "client",
+  "binlayout", "client", "server"
 ]
 resolver = "3"
